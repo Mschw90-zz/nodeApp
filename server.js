@@ -1,4 +1,4 @@
-
+const cosmosdb = require('@azure/cosmos').CosmosClient;
 require('dotenv').config();
 const express = require('express')
 const app = express()
@@ -56,13 +56,6 @@ app.post('/profile', uploadStrategy, async (req, res) => {
   }
 });
 
-// app.post('/profile', upload.single('avatar'), function (req, res) {
-//     res.redirect("/")
-// })
-
-
-
-
 app.get('/images', async(req, res) => {
     const containerURL = ContainerURL.fromServiceURL(serviceURL, containerName);
 
@@ -80,14 +73,17 @@ app.get('/images', async(req, res) => {
         res.status(500);
 
     }
-    // fs.readdir(dirPath, (err, files) => {
-    //     if(err) {
-    //         res.send("you suck")
-    //     } else {
-    //         res.json(files)
-    //     }
-    // })
 })
+
+const nosql = new cosmosdb({
+  endpoint: process.env.AZURE_COSMOS_URI,
+  auth: {
+    masterKey: process.env.AZURE_COSMOS_PRIMARY_KEY
+  }
+})
+
+nosql.database('images').container('pics').items.readAll().toArray().then(res => console.log(res.result))
+
 
 app.use(express.static('.'));
 
