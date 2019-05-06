@@ -44,33 +44,36 @@ app.post('/profile', uploadStrategy, async (req, res) => {
     const containerURL = ContainerURL.fromServiceURL(serviceURL, containerName);
     const blockBlobURL = BlockBlobURL.fromContainerURL(containerURL, blobName);
     
-    
     try {
+      console.log("fam")
         await uploadStreamToBlockBlob(aborter, stream,
             blockBlobURL, uploadOptions.bufferSize, uploadOptions.maxBuffers);
             res.redirect("/")
             
         } catch (err) {
+            console.log("hi")
             res.json(err)
 
-  }
+        }
 });
 
 app.get('/images', async(req, res) => {
     const containerURL = ContainerURL.fromServiceURL(serviceURL, containerName);
 
     try {
-
+      console.log("bro")
     const listBlobsResponse = await containerURL.listBlobFlatSegment(Aborter.none);
 
     for (const blob of listBlobsResponse.segment.blobItems) {
         console.log(`Blob: ${blob.name}`);
     }
-        res.json(listBlobsResponse.segment.blobItems);
+      res.json(listBlobsResponse.segment.blobItems.map(item => {
+              return `${containerURL.storageClientContext.url}/${item.name}`;
+      }));
 
     } catch (err) {
-
-        res.status(500);
+      console.log("sup")
+        res.status(err);
 
     }
 })
@@ -82,7 +85,7 @@ const nosql = new cosmosdb({
   }
 })
 
-nosql.database('images').container('pics').items.readAll().toArray().then(res => console.log(res.result))
+// nosql.database('images').container('pics').items.readAll().toArray().then(res => console.log(res.result))
 
 
 app.use(express.static('.'));
