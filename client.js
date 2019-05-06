@@ -1,7 +1,5 @@
 let picture = document.querySelector("#pictures");
 
-
-
 if (picture) {
     fetch('/images')
         .then(res => res.json())

@@ -17,7 +17,7 @@ const inMemoryStorage = multer.memoryStorage();
 const uploadStrategy = multer({ storage: inMemoryStorage }).single('image');
 const getStream = require('into-stream');
 const containerName = 'images';
-const ONE_MEGABYTE = 1024 * 1024;
+const ONE_MEGABYTE = 1024 * 1024; // helps to reveal the intent of file size calculations during upload operations.
 const uploadOptions = { bufferSize: 4 * ONE_MEGABYTE, maxBuffers: 20 };
 const ONE_MINUTE = 60 * 1000;
 const sharedKeyCredential = new SharedKeyCredential(
@@ -29,12 +29,12 @@ const serviceURL = new ServiceURL(
     pipeline
   );
 
-  const getBlobName = originalName => {
-    // Use a random number to generate a unique file name, 
-    // removing "0." from the start of the string.
-    const identifier = Math.random().toString().replace(/0\./, ''); 
-    return `${identifier}-${originalName}`;
-  };
+const getBlobName = originalName => {
+  // Use a random number to generate a unique file name, 
+  // removing "0." from the start of the string.
+  const identifier = Math.random().toString().replace(/0\./, ''); 
+  return `${identifier}-${originalName}`;
+};
 
 
 app.use(express.static('.'));  // making current directory as a static directory
@@ -43,25 +43,25 @@ app.use(express.urlencoded({ extended: false }));
 const containerURL = ContainerURL.fromServiceURL(serviceURL, containerName);
 
 app.post('/profile', uploadStrategy, async (req, res) => {
+  const aborter = Aborter.timeout(30 * ONE_MINUTE); // used to define timeouts when running code
+  const blobName = getBlobName(req.file.originalname);
+  const stream = getStream(req.file.buffer);
+  const blockBlobURL = BlockBlobURL.fromContainerURL(containerURL, blobName);
 
-const aborter = Aborter.timeout(30 * ONE_MINUTE);
-const blobName = getBlobName(req.file.originalname);
-const stream = getStream(req.file.buffer);
-const blockBlobURL = BlockBlobURL.fromContainerURL(containerURL, blobName);
-
-try {
-    
+  try {
+      
     await uploadStreamToBlockBlob(aborter, stream,
     blockBlobURL, uploadOptions.bufferSize, uploadOptions.maxBuffers);
-
+    
     res.redirect('/');   
 
-} catch (err) {
+  } catch (err) {
 
     res.send(err); 
 
-}
+  }
 });
+
 const nosql = new cosmos( {endpoint: process.env.AZURE_COSMOS_URI, auth: { 
   masterKey: process.env.AZURE_COSMOS_PRIMARY_KEY
 }});
@@ -76,14 +76,12 @@ res.render('index.html');
 });
 
 app.get('/images', (req, res) => {
-
-    containerURL.listBlobFlatSegment(Aborter.none)
-     .then(listBlobResponse => {
-          res.json(listBlobResponse.segment.blobItems.map(item => {
-              return `${containerURL.storageClientContext.url}/${item.name}`;
-          }));
-     });
-
+  containerURL.listBlobFlatSegment(Aborter.none)
+    .then(listBlobResponse => {
+        res.json(listBlobResponse.segment.blobItems.map(item => {
+            return `${containerURL.storageClientContext.url}/${item.name}`;
+        }));
+    });
 });
 
 app.listen(port, () => {   // To make the server live
